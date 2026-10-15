@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexBrasil — Navegador da Legislação Brasileira</title>
+<meta name="description" content="Pesquise e navegue por mais de 323 mil normas brasileiras: Constituição Federal, leis federais, estaduais e distritais. Fonte: github.com/ctresb/leis">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/latin-400.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/latin-500.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/latin-600.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/latin-700.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/latin-800.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5/latin-600.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5/latin-700.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<style>
+:root{
+  --navy:#0c1a2b; --navy2:#12263e; --ink:#1b2735; --paper:#f5f3ec; --card:#ffffff;
+  --green:#0e7a4f; --green-d:#0a5c3b; --green-s:#e4f1ea;
+  --gold:#c9a227; --gold-s:#f8eed0;
+  --blue:#22457a; --red:#b23a2f; --red-s:#fae9e6;
+  --line:#e5e0d2; --line2:#d8d2c0; --muted:#6c7583;
+  --radius:14px;
+  --shadow:0 1px 2px rgba(12,26,43,.05), 0 10px 30px rgba(12,26,43,.08);
+  --shadow-lg:0 4px 12px rgba(12,26,43,.10), 0 24px 60px rgba(12,26,43,.16);
+  --serif:'Playfair Display', Georgia, 'Times New Roman', serif;
+  --sans:'Inter', system-ui, -apple-system, sans-serif;
+  --doc-size:16.5px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+a{color:var(--green);text-decoration:none}
+a:hover{text-decoration:underline}
+::selection{background:#f4dd91}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#c9c2b0;border-radius:8px;border:3px solid var(--paper)}
+::-webkit-scrollbar-thumb:hover{background:#a9a08a}
+
+/* ===== LAYOUT ===== */
+#sidebar{position:fixed;top:0;left:0;bottom:0;width:266px;background:linear-gradient(175deg,#0e1f34 0%,#0c1a2b 55%,#0a1626 100%);color:#e8edf4;display:flex;flex-direction:column;z-index:60;transition:transform .28s ease}
+#main{margin-left:266px;min-height:100vh;position:relative}
+#topbar{position:sticky;top:0;z-index:50;background:rgba(245,243,236,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:12px 28px;display:flex;align-items:center;gap:14px;min-height:58px}
+#topbar .titulo-top{font-weight:600;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#btn-menu{display:none;background:none;border:none;font-size:22px;color:var(--ink);padding:4px 8px;border-radius:8px}
+.top-spacer{flex:1}
+.top-link{font-size:13px;font-weight:500;color:var(--muted);display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;border:1px solid var(--line2);background:var(--card);white-space:nowrap}
+.top-link:hover{color:var(--green);border-color:var(--green);text-decoration:none}
+
+/* ===== SIDEBAR ===== */
+.logo{padding:24px 22px 18px;display:flex;gap:12px;align-items:center;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo svg{flex-shrink:0}
+.logo .nome{font-family:var(--serif);font-size:21px;font-weight:700;letter-spacing:.2px;color:#fff;line-height:1.1}
+.logo .nome span{color:var(--gold)}
+.logo .sub{font-size:10.5px;color:#8fa0b5;letter-spacing:1.4px;text-transform:uppercase;margin-top:3px}
+.nav{padding:16px 12px;display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto}
+.nav button{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;border:none;background:none;color:#b9c5d4;font-size:14px;font-weight:500;border-radius:10px;text-align:left;transition:all .15s}
+.nav button svg{flex-shrink:0;opacity:.85}
+.nav button:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav button.ativo{background:linear-gradient(90deg,rgba(201,162,39,.18),rgba(201,162,39,.06));color:#f4e3ae;font-weight:600;box-shadow:inset 3px 0 0 var(--gold)}
+.nav .rotulo-sec{font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:#5f7189;padding:18px 14px 8px;font-weight:600}
+#lista-recentes{display:flex;flex-direction:column;gap:1px}
+#lista-recentes button{font-size:12.5px;padding:8px 14px;border:none;background:none;color:#93a3b8;text-align:left;border-radius:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;width:100%}
+#lista-recentes button:hover{color:#fff;background:rgba(255,255,255,.06)}
+.recentes-vazio{font-size:12px;color:#54677f;padding:6px 14px;font-style:italic}
+.side-foot{padding:14px 16px 18px;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:10px}
+#taxa-api{font-size:11px;color:#7d8fa6;display:flex;align-items:center;gap:7px}
+#taxa-api .bolinha{width:8px;height:8px;border-radius:50%;background:#3ecf8e;flex-shrink:0}
+#taxa-api.alerta .bolinha{background:#e8b23a}
+#taxa-api.critico .bolinha{background:#e5645a}
+.side-foot .botoes{display:flex;gap:8px}
+.btn-side{flex:1;padding:8px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);color:#c6d2e0;font-size:12px;font-weight:500;transition:all .15s}
+.btn-side:hover{background:rgba(255,255,255,.12);color:#fff}
+.fonte-repo{font-size:11px;color:#67788e;text-align:center;line-height:1.5}
+.fonte-repo a{color:#9db4cf}
+
+/* ===== VIEWS ===== */
+.view{display:none;animation:fadeUp .35s ease}
+.view.ativa{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.container{max-width:1120px;margin:0 auto;padding:36px 28px 80px}
+
+/* ===== HERO ===== */
+.hero{background:
+  radial-gradient(1200px 400px at 85% -10%, rgba(201,162,39,.16), transparent 60%),
+  radial-gradient(900px 420px at -10% 110%, rgba(14,122,79,.14), transparent 55%),
+  linear-gradient(160deg,#0d1e33 0%,#0c1a2b 60%,#0a1524 100%);
+  color:#f0ede2;border-bottom:3px solid;border-image:linear-gradient(90deg,#0e7a4f 0 34%,#c9a227 34% 67%,#22457a 67% 100%) 1;position:relative;overflow:hidden}
+.hero-in{max-width:1120px;margin:0 auto;padding:64px 28px 60px;display:grid;grid-template-columns:1.35fr .9fr;gap:48px;align-items:center}
+.hero .selo{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#e9d493;background:rgba(201,162,39,.14);border:1px solid rgba(201,162,39,.35);padding:6px 14px;border-radius:99px;margin-bottom:22px}
+.hero h1{font-family:var(--serif);font-size:clamp(34px,4.4vw,52px);line-height:1.12;font-weight:700;color:#fdfbf3;margin-bottom:16px}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero p.lead{font-size:16.5px;color:#aebbd0;max-width:560px;margin-bottom:30px}
+.caixa-busca{display:flex;background:#fff;border-radius:14px;padding:6px;gap:6px;box-shadow:0 18px 44px rgba(0,0,0,.35);max-width:620px}
+.caixa-busca input{flex:1;border:none;outline:none;padding:12px 14px;font-size:15.5px;color:var(--ink);border-radius:10px;background:transparent;font-family:inherit;min-width:0}
+.btn{border:none;border-radius:10px;padding:12px 22px;font-size:14.5px;font-weight:600;transition:all .18s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn-verde{background:var(--green);color:#fff}
+.btn-verde:hover{background:var(--green-d);transform:translateY(-1px);box-shadow:0 6px 18px rgba(14,122,79,.35)}
+.btn-ouro{background:var(--gold);color:#20180a}
+.btn-ouro:hover{filter:brightness(1.07)}
+.btn-linha{background:transparent;color:var(--ink);border:1.5px solid var(--line2)}
+.btn-linha:hover{border-color:var(--green);color:var(--green)}
+.hero .dica{font-size:12.5px;color:#7e8fa8;margin-top:14px}
+.hero .dica kbd{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:1px 7px;font-size:11px;font-family:inherit}
+.hero-art{display:flex;justify-content:center}
+.hero-art svg{width:100%;max-width:380px;filter:drop-shadow(0 20px 40px rgba(0,0,0,.4))}
+
+/* ===== STATS ===== */
+.stats{background:var(--card);border-bottom:1px solid var(--line)}
+.stats-in{max-width:1120px;margin:0 auto;padding:22px 28px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.stat{text-align:center;padding:6px 4px;position:relative}
+.stat + .stat::before{content:'';position:absolute;left:0;top:12%;bottom:12%;width:1px;background:var(--line)}
+.stat .num{font-family:var(--serif);font-size:26px;font-weight:700;color:var(--navy2)}
+.stat .num small{font-size:15px;color:var(--gold)}
+.stat .rot{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:2px;font-weight:500}
+
+/* ===== SEÇÕES HOME ===== */
+.sec{max-width:1120px;margin:0 auto;padding:52px 28px 8px}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+.sec-head h2{font-family:var(--serif);font-size:27px;font-weight:700;color:var(--navy2)}
+.sec-head .ver-tudo{margin-left:auto;font-size:13.5px;font-weight:600;color:var(--green)}
+.sec-desc{color:var(--muted);font-size:14.5px;margin-bottom:24px;max-width:640px}
+.grade-leis{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:16px}
+.card-lei{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(12,26,43,.04);transition:all .2s;cursor:pointer;position:relative;overflow:hidden}
+.card-lei::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--green),var(--gold));transform:scaleX(0);transform-origin:left;transition:transform .25s}
+.card-lei:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:var(--line2)}
+.card-lei:hover::before{transform:scaleX(1)}
+.card-lei .apelido{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gold);filter:brightness(.8)}
+.card-lei h3{font-family:var(--serif);font-size:19px;font-weight:600;color:var(--navy2);line-height:1.25}
+.card-lei .ementa{font-size:13px;color:var(--muted);flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card-lei .rodape{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3.5px 10px;border-radius:99px;background:var(--green-s);color:var(--green-d);border:1px solid rgba(14,122,79,.18);white-space:nowrap}
+.chip.ouro{background:var(--gold-s);color:#7a5f10;border-color:rgba(201,162,39,.3)}
+.chip.azul{background:#e6ecf7;color:var(--blue);border-color:rgba(34,69,122,.18)}
+.chip.cinza{background:#eef0f2;color:#5b6572;border-color:#e0e3e8}
+.chip.vermelho{background:var(--red-s);color:var(--red);border-color:rgba(178,58,47,.2)}
+.grade-esferas{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.card-esfera{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;display:flex;gap:16px;align-items:flex-start;cursor:pointer;transition:all .2s;box-shadow:0 1px 2px rgba(12,26,43,.04)}
+.card-esfera:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:var(--gold)}
+.card-esfera .icone{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;background:linear-gradient(140deg,#f3efe2,#e9e2cc);border:1px solid var(--line2)}
+.card-esfera h3{font-size:15.5px;font-weight:700;color:var(--navy2);margin-bottom:4px}
+.card-esfera p{font-size:13px;color:var(--muted);line-height:1.5}
+.card-esfera .seta{margin-left:auto;color:var(--line2);font-size:20px;transition:all .2s}
+.card-esfera:hover .seta{color:var(--gold);transform:translateX(3px)}
+
+/* ===== BUSCA ===== */
+.painel-filtros{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);margin-bottom:26px}
+.linha-filtros{display:grid;grid-template-columns:2fr 1.3fr 1.1fr .8fr auto;gap:12px;align-items:end}
+.campo{display:flex;flex-direction:column;gap:6px;min-width:0}
+.campo label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--muted)}
+.campo input,.campo select{padding:11px 13px;border:1.5px solid var(--line2);border-radius:10px;font-size:14.5px;font-family:inherit;background:#fdfcfa;color:var(--ink);outline:none;transition:border .15s;width:100%}
+.campo input:focus,.campo select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(14,122,79,.12)}
+.sugestoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+.sugestoes .rot{font-size:12px;color:var(--muted);font-weight:600}
+.sugestao{font-size:12.5px;padding:5px 13px;border-radius:99px;border:1px solid var(--line2);background:var(--paper);color:var(--ink);font-weight:500;transition:all .15s}
+.sugestao:hover{border-color:var(--gold);background:var(--gold-s);color:#6b5410}
+.resultado-info{display:flex;align-items:center;gap:10px;margin:6px 2px 16px;font-size:14px;color:var(--muted)}
+.resultado-info strong{color:var(--ink)}
+.lista-resultados{display:flex;flex-direction:column;gap:12px}
+.item-resultado{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start;transition:all .18s}
+.item-resultado:hover{border-color:var(--green);box-shadow:var(--shadow)}
+.item-resultado .corpo{flex:1;min-width:0}
+.item-resultado h3{font-size:16px;font-weight:700;color:var(--navy2);margin-bottom:3px}
+.item-resultado h3 button{background:none;border:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.item-resultado h3 button:hover{color:var(--green)}
+.item-resultado .em{font-size:13.5px;color:var(--muted);margin-bottom:9px}
+.item-resultado .abrir{flex-shrink:0;align-self:center}
+.aviso-card{background:var(--gold-s);border:1px solid rgba(201,162,39,.4);border-radius:12px;padding:18px 20px;font-size:14px;color:#6b5410;margin-top:16px}
+.aviso-card a{font-weight:600}
+.estado-vazio{text-align:center;padding:70px 20px;color:var(--muted)}
+.estado-vazio .ico{font-size:52px;margin-bottom:14px;opacity:.65}
+.estado-vazio h3{font-family:var(--serif);font-size:22px;color:var(--navy2);margin-bottom:8px}
+.estado-vazio p{font-size:14px;max-width:460px;margin:0 auto}
+
+/* ===== NAVEGAR ===== */
+.migalhas{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:20px;font-size:13.5px}
+.migalhas button{background:none;border:none;color:var(--green);font-weight:500;font-size:13.5px;padding:4px 8px;border-radius:7px;font-family:inherit}
+.migalhas button:hover{background:var(--green-s)}
+.migalhas .sep{color:var(--line2)}
+.migalhas .atual{color:var(--ink);font-weight:700;padding:4px 8px}
+.barra-lista{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+.barra-lista .filtro{flex:1;max-width:380px;position:relative}
+.barra-lista .filtro input{width:100%;padding:10px 14px 10px 38px;border:1.5px solid var(--line2);border-radius:10px;font-size:14px;font-family:inherit;background:var(--card);outline:none}
+.barra-lista .filtro input:focus{border-color:var(--green)}
+.barra-lista .filtro svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.45}
+.barra-lista .contagem{font-size:13px;color:var(--muted);margin-left:auto}
+.lista-arquivos{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 2px rgba(12,26,43,.04)}
+.linha-arq{display:flex;align-items:center;gap:14px;width:100%;padding:13px 18px;border:none;background:none;border-bottom:1px solid #f0ede3;font-size:14.5px;text-align:left;transition:background .12s;font-family:inherit;color:var(--ink)}
+.linha-arq:last-child{border-bottom:none}
+.linha-arq:hover{background:#faf8f0}
+.linha-arq .ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+.linha-arq.pasta .ico{background:var(--gold-s)}
+.linha-arq.arquivo .ico{background:var(--green-s)}
+.linha-arq .nome{flex:1;min-width:0}
+.linha-arq .nome b{font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linha-arq .nome small{color:var(--muted);font-size:12px;font-family:ui-monospace,Menlo,monospace}
+.linha-arq .tam{font-size:12px;color:var(--muted);flex-shrink:0}
+.linha-arq .seta{color:var(--line2);flex-shrink:0}
+
+/* ===== LEITOR ===== */
+#barra-progresso{position:sticky;top:58px;z-index:40;height:3px;background:rgba(12,26,43,.06)}
+#progresso{height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--gold));transition:width .1s linear}
+.leitor-topo{display:flex;align-items:center;gap:12px;padding:16px 0 4px;flex-wrap:wrap}
+.btn-voltar{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1.5px solid var(--line2);border-radius:99px;padding:7px 16px;font-size:13.5px;font-weight:600;color:var(--ink);transition:all .15s}
+.btn-voltar:hover{border-color:var(--green);color:var(--green)}
+.acoes-doc{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn-doc{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1.5px solid var(--line2);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--ink);transition:all .15s}
+.btn-doc:hover{border-color:var(--green);color:var(--green);text-decoration:none}
+.meta-doc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:30px 32px;box-shadow:var(--shadow);margin:16px 0 20px}
+.meta-doc h1{font-family:var(--serif);font-size:clamp(24px,3vw,34px);font-weight:700;color:var(--navy2);line-height:1.2;margin-bottom:10px}
+.meta-doc .ementa-doc{font-size:15px;color:var(--ink);background:var(--paper);border-left:3px solid var(--gold);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0 18px;font-style:italic}
+.grade-meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px 22px;margin-top:6px}
+.grade-meta .cel .rot{font-size:10.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.grade-meta .cel .val{font-size:13.5px;font-weight:500;color:var(--ink);word-break:break-word}
+.grade-meta .cel .val.mono{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--muted)}
+.barras-doc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:20px;position:sticky;top:64px;z-index:35;box-shadow:0 2px 8px rgba(12,26,43,.06);flex-wrap:wrap}
+.barras-doc .grupo{display:flex;align-items:center;gap:6px}
+.btn-mini{width:32px;height:32px;border-radius:8px;border:1px solid var(--line2);background:#fff;font-size:14px;font-weight:700;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;transition:all .15s}
+.btn-mini:hover{border-color:var(--green);color:var(--green)}
+#busca-doc-wrap{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+#q-doc{padding:8px 12px;border:1.5px solid var(--line2);border-radius:9px;font-size:13.5px;font-family:inherit;width:220px;outline:none;background:#fff}
+#q-doc:focus{border-color:var(--green)}
+#contador-achados{font-size:12.5px;color:var(--muted);min-width:74px;text-align:center}
+.doc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:46px 52px 70px;box-shadow:var(--shadow);font-size:var(--doc-size)}
+.doc h1{font-family:var(--serif);font-size:1.55em;color:var(--navy2);margin:.6em 0 .8em;text-align:center;line-height:1.3}
+.doc h2{font-family:var(--serif);font-size:1.28em;color:var(--navy2);margin:1.7em 0 .7em;padding-bottom:.35em;border-bottom:2px solid var(--gold-s)}
+.doc h3{font-size:1.08em;font-weight:700;color:var(--green-d);margin:1.7em 0 .6em;text-transform:uppercase;letter-spacing:.5px}
+.doc h4{font-size:1em;font-weight:700;color:var(--ink);margin:1.4em 0 .5em}
+.doc h5,.doc h6{font-size:.95em;font-weight:700;margin:1.2em 0 .4em}
+.doc p{margin:.85em 0;text-align:justify;hyphens:auto}
+.doc strong{font-weight:700;color:var(--navy2)}
+.doc blockquote{border-left:3px solid var(--line2);padding:8px 18px;color:var(--muted);margin:1em 0;background:#fbfaf6;border-radius:0 10px 10px 0}
+.doc ul,.doc ol{margin:.8em 0 .8em 1.8em}
+.doc li{margin:.3em 0;text-align:justify}
+.doc table{border-collapse:collapse;margin:1.2em auto;font-size:.9em}
+.doc th,.doc td{border:1px solid var(--line2);padding:7px 12px}
+.doc th{background:var(--paper);font-weight:700}
+.doc hr{border:none;border-top:1px solid var(--line);margin:2em 0}
+.doc a{word-break:break-all}
+mark.hl{background:#ffe27a;color:inherit;border-radius:3px;padding:0 2px}
+mark.hl.atual{background:#ffab5e;box-shadow:0 0 0 2px #ffab5e}
+
+/* ===== ESQUELETO ===== */
+.skel{background:linear-gradient(90deg,#ece9de 25%,#f6f4ec 50%,#ece9de 75%);background-size:200% 100%;animation:brilho 1.3s infinite;border-radius:8px}
+@keyframes brilho{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-linha{height:18px;margin:12px 0}
+.skel-bloco{height:64px;margin:10px 0;border-radius:12px}
+
+/* ===== TOASTS ===== */
+#toasts{position:fixed;bottom:22px;right:22px;z-index:200;display:flex;flex-direction:column;gap:10px;max-width:380px}
+.toast{background:var(--navy);color:#eef2f8;border-radius:12px;padding:14px 18px;font-size:13.5px;box-shadow:var(--shadow-lg);display:flex;gap:11px;align-items:flex-start;animation:toastIn .3s ease;border-left:4px solid var(--gold)}
+.toast.erro{border-left-color:#e5645a}
+.toast.ok{border-left-color:#3ecf8e}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* ===== MODAL ===== */
+.modal-fundo{position:fixed;inset:0;background:rgba(10,20,34,.55);backdrop-filter:blur(3px);z-index:150;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-fundo.aberto{display:flex;animation:fadeUp .25s}
+.modal{background:var(--card);border-radius:18px;max-width:560px;width:100%;padding:32px;box-shadow:var(--shadow-lg);max-height:86vh;overflow-y:auto}
+.modal h2{font-family:var(--serif);font-size:23px;color:var(--navy2);margin-bottom:14px}
+.modal p{font-size:14px;color:var(--muted);margin-bottom:12px}
+.modal .fechar{float:right;background:none;border:none;font-size:22px;color:var(--muted);line-height:1}
+.modal input[type=password],.modal input[type=text]{width:100%;padding:11px 13px;border:1.5px solid var(--line2);border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px}
+.modal input:focus{border-color:var(--green)}
+.modal .acoes{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+.modal ul{margin:0 0 12px 20px;font-size:13.5px;color:var(--muted)}
+.modal li{margin-bottom:6px}
+.selo-info{display:inline-block;background:var(--green-s);color:var(--green-d);font-size:12px;font-weight:600;border-radius:8px;padding:4px 10px;margin-bottom:12px}
+
+/* ===== RODAPÉ HOME ===== */
+.rodape-home{background:var(--navy);color:#93a3b8;margin-top:70px;padding:44px 28px}
+.rodape-in{max-width:1120px;margin:0 auto;display:flex;gap:36px;flex-wrap:wrap;align-items:center}
+.rodape-in .txt{flex:1;min-width:280px;font-size:13px;line-height:1.7}
+.rodape-in .txt strong{color:#e8edf4}
+.rodape-in a{color:var(--gold)}
+
+/* ===== RESPONSIVO ===== */
+#obscuro{position:fixed;inset:0;background:rgba(10,20,34,.45);z-index:55;display:none}
+@media(max-width:1020px){
+  .hero-in{grid-template-columns:1fr;padding:48px 22px}
+  .hero-art{display:none}
+  .stats-in{grid-template-columns:repeat(3,1fr)}
+  .stat:nth-child(4)::before{display:none}
+  .linha-filtros{grid-template-columns:1fr 1fr}
+}
+@media(max-width:900px){
+  #sidebar{transform:translateX(-100%)}
+  #sidebar.aberto{transform:none;box-shadow:0 0 60px rgba(0,0,0,.4)}
+  #obscuro.aberto{display:block}
+  #main{margin-left:0}
+  #btn-menu{display:block}
+  .doc{padding:28px 22px 50px}
+  .meta-doc{padding:22px}
+  .container,.sec{padding-left:18px;padding-right:18px}
+  .linha-filtros{grid-template-columns:1fr}
+  #q-doc{width:150px}
+}
+@media(max-width:560px){
+  .stats-in{grid-template-columns:repeat(2,1fr)}
+  .stat + .stat::before{display:none}
+  .acoes-doc{width:100%;margin-left:0}
+}
+@media print{
+  #sidebar,#topbar,.barras-doc,.leitor-topo,#barra-progresso,#toasts{display:none!important}
+  #main{margin:0}
+  .doc{border:none;box-shadow:none;padding:0}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+
+<div id="obscuro" onclick="fecharMenu()"></div>
+
+<aside id="sidebar">
+  <div class="logo">
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="19" fill="#13263e" stroke="#c9a227" stroke-width="1.6"/>
+      <path d="M20 8v24M12 32h16M20 12l-8 3m8-3l8 3" stroke="#c9a227" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M9 15l3 6a3.4 3.4 0 0 1-6 0l3-6zm22 0l3 6a3.4 3.4 0 0 1-6 0l3-6z" fill="#e9d493" opacity=".9"/>
+      <path d="M9 15l-3 6h6l-3-6zm22 0l-3 6h6l-3-6z" stroke="#e9d493" stroke-width="1.2" stroke-linejoin="round" fill="none"/>
+    </svg>
+    <div>
+      <div class="nome">Lex<span>Brasil</span></div>
+      <div class="sub">Legislação aberta</div>
+    </div>
+  </div>
+  <nav class="nav">
+    <button data-rota="home" onclick="irPara('#/')">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>
+      Início
+    </button>
+    <button data-rota="busca" onclick="irPara('#/buscar')">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      Pesquisar
+    </button>
+    <button data-rota="navegar" onclick="irPara('#/navegar')">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Navegar no acervo
+    </button>
+    <div class="rotulo-sec">Vistos recentemente</div>
+    <div id="lista-recentes"></div>
+  </nav>
+  <div class="side-foot">
+    <div id="taxa-api" title="Limite de requisições da API do GitHub (60/hora sem autenticação)"><span class="bolinha"></span><span id="taxa-texto">API GitHub — verificando…</span></div>
+    <div class="botoes">
+      <button class="btn-side" id="btn-token" onclick="abrirModal('modal-token')">🔑 Token</button>
+      <button class="btn-side" onclick="abrirModal('modal-sobre')">ℹ️ Sobre</button>
+    </div>
+    <div class="fonte-repo">Acervo: <a href="https://github.com/ctresb/leis" target="_blank" rel="noopener">github.com/ctresb/leis</a></div>
+  </div>
+</aside>
+
+<div id="main">
+  <header id="topbar">
+    <button id="btn-menu" onclick="abrirMenu()" aria-label="Abrir menu">☰</button>
+    <div class="titulo-top" id="titulo-topo">LexBrasil — Navegador da Legislação Brasileira</div>
+    <div class="top-spacer"></div>
+    <a class="top-link" href="https://github.com/ctresb/leis" target="_blank" rel="noopener">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0C17.4 4.7 18.4 5 18.4 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+      Repositório fonte
+    </a>
+  </header>
+
+  <!-- ============ HOME ============ -->
+  <section class="view" id="v-home">
+    <div class="hero">
+      <div class="hero-in">
+        <div>
+          <div class="selo">⚖️ Dados abertos · 323.849 normas</div>
+          <h1>Todas as leis do Brasil,<br>em <em>um só lugar</em>.</h1>
+          <p class="lead">Pesquise e leia a Constituição Federal, as leis federais desde 1822 e a legislação de 25 estados e do Distrito Federal — direto do repositório aberto <strong style="color:#e9d493">ctresb/leis</strong>.</p>
+          <form class="caixa-busca" onsubmit="buscarHero(event)">
+            <input id="q-hero" type="text" placeholder="Ex.: 10406/2002, consumidor, LGPD, CLT, Maria da Penha…" autocomplete="off">
+            <button class="btn btn-ouro" type="submit">Pesquisar</button>
+          </form>
+          <div class="dica">Dica: pesquise por número da lei (informe o ano) ou por tema. Pressione <kbd>/</kbd> para focar a busca.</div>
+        </div>
+        <div class="hero-art">
+          <svg viewBox="0 0 380 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="190" cy="140" r="120" fill="#13263e" stroke="#c9a227" stroke-opacity=".4" stroke-width="1.5"/>
+            <circle cx="190" cy="140" r="98" stroke="#e9d493" stroke-opacity=".18" stroke-width="1"/>
+            <g stroke="#e9d493" stroke-width="3" stroke-linecap="round">
+              <path d="M190 62v14"/>
+              <path d="M190 76 128 100M190 76l62 24" stroke-width="2.4"/>
+              <path d="M128 100l-16 34h32l-16-34zm0 34a17 17 0 0 1-17-17m17 17a17 17 0 0 0 17-17" stroke-width="2"/>
+              <path d="M252 100l-16 34h32l-16-34zm0 34a17 17 0 0 1-17-17m17 17a17 17 0 0 0 17-17" stroke-width="2"/>
+            </g>
+            <circle cx="190" cy="70" r="5" fill="#c9a227"/>
+            <g fill="#f0ede2" opacity=".92">
+              <path d="M120 210h140l-8-14H128l-8 14z" opacity=".5"/>
+              <rect x="126" y="212" width="128" height="8" rx="2" opacity=".7"/>
+              <rect x="116" y="224" width="148" height="9" rx="2"/>
+            </g>
+            <g stroke="#8fa0b5" stroke-width="6" stroke-linecap="round" opacity=".85">
+              <path d="M142 152v52M174 152v52M206 152v52M238 152v52"/>
+            </g>
+            <g stroke="#e9d493" stroke-width="2.4" stroke-linecap="round">
+              <path d="M124 148h132M132 142h116"/>
+            </g>
+            <text x="190" y="270" text-anchor="middle" fill="#7d8fa6" font-family="Georgia,serif" font-style="italic" font-size="14">lex · populi · publica</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stats-in">
+        <div class="stat"><div class="num">323.849</div><div class="rot">Normas no acervo</div></div>
+        <div class="stat"><div class="num">29.184</div><div class="rot">Federais</div></div>
+        <div class="stat"><div class="num">294.664</div><div class="rot">Estaduais e distritais</div></div>
+        <div class="stat"><div class="num">26</div><div class="rot">Unidades federativas</div></div>
+        <div class="stat"><div class="num">1822<small>→hoje</small></div><div class="rot">Linha do tempo</div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head">
+        <h2>Legislação em destaque</h2>
+        <a class="ver-tudo" href="#/buscar" onclick="irPara('#/buscar');return false;">Ver índice completo →</a>
+      </div>
+      <p class="sec-desc">As normas mais consultadas do país, com texto compilado vigente e link para a fonte oficial de cada uma.</p>
+      <div class="grade-leis" id="grade-destaques"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><h2>Explorar o acervo</h2></div>
+      <p class="sec-desc">Navegue pela estrutura completa do repositório: pastas por esfera, tipo de norma e ano.</p>
+      <div class="grade-esferas" id="grade-esferas"></div>
+    </div>
+
+    <div class="sec" id="sec-recentes" style="display:none">
+      <div class="sec-head"><h2>Continuar lendo</h2></div>
+      <div class="grade-leis" id="grade-recentes" style="margin-top:16px"></div>
+    </div>
+
+    <div class="rodape-home">
+      <div class="rodape-in">
+        <div class="txt">
+          <strong>LexBrasil</strong> é um navegador não oficial de código aberto. Os textos das normas vêm do repositório <a href="https://github.com/ctresb/leis" target="_blank" rel="noopener">ctresb/leis</a>, convertido de fontes oficiais (Planalto, normas.leg.br, assembleias estaduais) para Markdown.<br><br>
+          ⚠️ Os textos têm caráter <strong>informativo</strong> e não substituem a publicação no Diário Oficial. Em parte do acervo o texto vem de OCR de PDF escaneado. Confira sempre a fonte oficial indicada no cabeçalho de cada norma antes de citá-la.
+        </div>
+        <div class="txt" style="max-width:260px">
+          <strong>Licença</strong><br>Atos oficiais do poder público não são objeto de proteção autoral (art. 8º, I, da Lei nº 9.610/98). Interface sob uso livre.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BUSCA ============ -->
+  <section class="view" id="v-busca">
+    <div class="container">
+      <div class="sec-head" style="margin-bottom:20px"><h2>Pesquisar leis</h2></div>
+      <form class="painel-filtros" id="form-busca" onsubmit="executarBuscaForm(event)">
+        <div class="linha-filtros">
+          <div class="campo">
+            <label for="q-busca">Número da lei ou palavra-chave</label>
+            <input id="q-busca" type="text" placeholder="Ex.: 11340, “10406/2002”, consumidor, tributo…" autocomplete="off">
+          </div>
+          <div class="campo">
+            <label for="uf-busca">Esfera / UF</label>
+            <select id="uf-busca"></select>
+          </div>
+          <div class="campo">
+            <label for="tipo-busca">Tipo de norma</label>
+            <select id="tipo-busca">
+              <option value="auto">Todos os tipos</option>
+              <option value="lei">Lei Ordinária</option>
+              <option value="lcp">Lei Complementar</option>
+              <option value="del">Decreto-Lei</option>
+              <option value="emc">Emenda Constitucional</option>
+              <option value="ldl">Lei Delegada</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="ano-busca">Ano</label>
+            <input id="ano-busca" type="number" min="1822" max="2030" placeholder="2002">
+          </div>
+          <button class="btn btn-verde" type="submit" style="height:44px">Pesquisar</button>
+        </div>
+        <div class="sugestoes" id="sugestoes">
+          <span class="rot">Sugestões:</span>
+        </div>
+      </form>
+      <div id="resultados-busca"></div>
+    </div>
+  </section>
+
+  <!-- ============ NAVEGAR ============ -->
+  <section class="view" id="v-navegar">
+    <div class="container">
+      <div id="migalhas" class="migalhas"></div>
+      <div id="conteudo-navegar"></div>
+    </div>
+  </section>
+
+  <!-- ============ LEITOR ============ -->
+  <section class="view" id="v-leitor">
+    <div class="container" style="max-width:960px">
+      <div id="barra-progresso"><div id="progresso"></div></div>
+      <div id="conteudo-leitor"></div>
+    </div>
+  </section>
+</div>
+
+<div id="toasts"></div>
+
+<!-- MODAL TOKEN -->
+<div class="modal-fundo" id="modal-token" onclick="if(event.target===this)fecharModais()">
+  <div class="modal">
+    <button class="fechar" onclick="fecharModais()">✕</button>
+    <h2>🔑 Token de acesso do GitHub</h2>
+    <p>Sem autenticação, a API do GitHub permite <strong>60 requisições por hora</strong> por IP — o suficiente para navegar, mas pode acabar em sessões longas. Com um token pessoal (escopo <code>public_repo</code>), o limite sobe para 5.000/hora.</p>
+    <p>O token fica salvo <strong>somente no seu navegador</strong> (localStorage) e é enviado apenas para <code>api.github.com</code>. Você pode apagá-lo a qualquer momento.</p>
+    <input type="password" id="input-token" placeholder="ghp_… (deixe vazio para remover)">
+    <div class="acoes">
+      <button class="btn btn-linha" onclick="fecharModais()">Cancelar</button>
+      <button class="btn btn-verde" onclick="salvarToken()">Salvar token</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SOBRE -->
+<div class="modal-fundo" id="modal-sobre" onclick="if(event.target===this)fecharModais()">
+  <div class="modal">
+    <button class="fechar" onclick="fecharModais()">✕</button>
+    <h2>Sobre o LexBrasil</h2>
+    <span class="selo-info">Navegador não oficial · Código aberto</span>
+    <p>O LexBrasil é uma interface de leitura e pesquisa sobre o repositório <a href="https://github.com/ctresb/leis" target="_blank" rel="noopener"><strong>ctresb/leis</strong></a>, que reúne <strong>323.849 normas brasileiras</strong> em Markdown: a Constituição Federal, a legislação federal de 1822 até hoje e a de 25 estados e do Distrito Federal, cada arquivo com cabeçalho estruturado (ementa, data, situação, URN) e link para a origem oficial.</p>
+    <ul>
+      <li><strong>Busca por número:</strong> informe o número e o ano — o sistema localiza o arquivo no repositório e abre o texto vigente.</li>
+      <li><strong>Busca por tema:</strong> um índice curado das principais leis federais, pesquisável por título, ementa e palavras-chave.</li>
+      <li><strong>Texto integral:</strong> para busca em todo o conteúdo das 323 mil normas, usamos a busca de código do GitHub (requer conta no GitHub).</li>
+      <li><strong>Navegação:</strong> toda a árvore de pastas do acervo é carregada diretamente da API do GitHub.</li>
+    </ul>
+    <p style="background:var(--gold-s);border-radius:10px;padding:12px 14px;color:#6b5410">⚠️ Os textos têm caráter informativo e <strong>não substituem a publicação no Diário Oficial</strong>. São conversões automáticas e, em parte do acervo, OCR de PDF escaneado. Confira sempre a fonte indicada no cabeçalho da norma.</p>
+    <p style="font-size:12.5px">Pendências conhecidas do acervo: PR e RJ ainda sem coleta; lacunas parciais em AC, TO, RN, RS, ES, SE e MG (detalhes no README do repositório).</p>
+    <div class="acoes"><button class="btn btn-verde" onclick="fecharModais()">Entendi</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ================= CONFIG ================= */
+const REPO = 'ctresb/leis', BRANCH = 'main';
+const API  = 'https://api.github.com/repos/' + REPO + '/contents/';
+const RAW  = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/';
+const BLOB = 'https://github.com/' + REPO + '/blob/' + BRANCH + '/';
+
+const UFS = {AC:'Acre',AL:'Alagoas',AM:'Amazonas',AP:'Amapá',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MG:'Minas Gerais',MS:'Mato Grosso',MT:'Mato Grosso',PA:'Pará',PB:'Paraíba',PE:'Pernambuco',PI:'Piauí',PR:'Paraná',RN:'Rio Grande do Norte',RO:'Rondônia',RR:'Roraima',RS:'Rio Grande do Sul',SC:'Santa Catarina',SE:'Sergipe',SP:'São Paulo',TO:'Tocantins'};
+const UFS_SEM_COBERTURA = {PR:'sem cobertura — WAF da fonte bloqueia coleta', RJ:'sem cobertura — servidor da ALERJ indisponível'};
+
+const PASTA_TIPO = {lei:'leis-ordinarias', lcp:'leis-complementares', del:'decretos-lei', emc:'emendas-constitucionais', ldl:'leis-delegadas'};
+const ROTULO_TIPO = {lei:'Lei Ordinária', lcp:'Lei Complementar', del:'Decreto-Lei', emc:'Emenda Constitucional', ldl:'Lei Delegada', lp:'Lei Promulgada', lcon:'Lei Constitucional'};
+const ROTULO_PASTA = {'leis-ordinarias':'Leis Ordinárias','leis-complementares':'Leis Complementares','leis-delegadas':'Leis Delegadas','leis-promulgadas':'Leis Promulgadas','leis-constitucionais':'Leis Constitucionais','decretos-lei':'Decretos-Lei','decretos-lei-complementares':'Decretos-Lei Complementares','emendas-constitucionais':'Emendas Constitucionais','emendas-lei-organica':'Emendas à Lei Orgânica','constituicao':'Constituição','constituicoes-historicas':'Constituições Históricas','lei-organica':'Lei Orgânica','regulamentos':'Regulamentos','federal':'Legislação Federal','estaduais':'Estados e DF','municipais':'Municípios','reguladores':'Órgãos Reguladores','jurisprudencia':'Jurisprudência','fonte':'Fontes e procedência','scripts':'Scripts'};
+
+/* ================= ACERVO CURADO ================= */
+const ACERVO = [
+ {t:'Constituição Federal de 1988', ap:'CF/88', path:'constituicao.md', em:'Constituição da República Federativa do Brasil, promulgada em 5 de outubro de 1988 — texto vigente compilado, com todas as emendas constitucionais.', tags:['constituicao','cf88','carta magna','direitos fundamentais','remedios constitucionais','estado','federacao']},
+ {t:'Código Civil', n:'10406', a:'2002', tp:'lei', em:'Institui o Código Civil.', tags:['civil','contratos','obrigacoes','propriedade','familia','sucessoes','pessoas','bens','casamento']},
+ {t:'Código Penal', n:'2848', a:'1940', tp:'del', em:'Institui o Código Penal Brasileiro.', tags:['penal','crime','homicidio','furto','pena','dolo']},
+ {t:'Código de Processo Penal', n:'3689', a:'1941', tp:'del', em:'Institui o Código de Processo Penal.', tags:['processo penal','inquérito','prisao','juri','recurso']},
+ {t:'Consolidação das Leis do Trabalho (CLT)', n:'5452', a:'1943', tp:'del', em:'Aprova a Consolidação das Leis do Trabalho.', tags:['trabalho','emprego','ferias','salario','jornada','demissao','clt','carteira']},
+ {t:'Código de Defesa do Consumidor', n:'8078', a:'1990', tp:'lei', em:'Dispõe sobre a proteção do consumidor e dá outras providências.', tags:['consumidor','fornecedor','produto','servico','vicio','cdc']},
+ {t:'Código de Processo Civil', n:'13105', a:'2015', tp:'lei', em:'Institui o Código de Processo Civil.', tags:['processo civil','acao','recurso','execucao','tutela','peticao','cpc']},
+ {t:'Código Tributário Nacional', n:'5172', a:'1966', tp:'lei', em:'Dispõe sobre o Sistema Tributário Nacional e institui normas gerais de direito tributário aplicáveis à União, Estados e Municípios.', tags:['tributario','imposto','taxa','tributo','credito tributario','ctn']},
+ {t:'Lei de Introdução às Normas do Direito Brasileiro', n:'4657', a:'1942', tp:'del', em:'Dispõe sobre a aplicação, vigência e interpretação das normas jurídicas (LINDB).', tags:['introducao','hermeneutica','aplicacao da lei','conflito de leis','lindb']},
+ {t:'Lei Geral de Proteção de Dados (LGPD)', n:'13709', a:'2018', tp:'lei', em:'Dispõe sobre o tratamento de dados pessoais, inclusive em meios digitais, por pessoa natural ou jurídica de direito público ou privado.', tags:['dados pessoais','privacidade','anpd','titular','consentimento','lgpd']},
+ {t:'Marco Civil da Internet', n:'12965', a:'2014', tp:'lei', em:'Estabelece princípios, garantias, direitos e deveres para o uso da Internet no Brasil.', tags:['internet','neutralidade','provedor','privacidade','marco civil']},
+ {t:'Lei Maria da Penha', n:'11340', a:'2006', tp:'lei', em:'Cria mecanismos para coibir a violência doméstica e familiar contra a mulher.', tags:['mulher','violencia domestica','medida protetiva','feminicidio','maria da penha']},
+ {t:'Lei de Diretrizes e Bases da Educação', n:'9394', a:'1996', tp:'lei', em:'Estabelece as diretrizes e bases da educação nacional.', tags:['educacao','escola','ensino','professor','ldb']},
+ {t:'Estatuto da Criança e do Adolescente', n:'8069', a:'1990', tp:'lei', em:'Dispõe sobre a proteção integral à criança e ao adolescente.', tags:['crianca','adolescente','guarda','adocao','conselho tutelar','eca']},
+ {t:'Estatuto do Idoso', n:'10741', a:'2003', tp:'lei', em:'Dispõe sobre o estatuto do idoso e dá outras providências.', tags:['idoso','prioridade','saude','terceira idade']},
+ {t:'Lei Brasileira de Inclusão (Estatuto da PcD)', n:'13146', a:'2015', tp:'lei', em:'Institui a Lei Brasileira de Inclusão da Pessoa com Deficiência.', tags:['deficiencia','inclusao','acessibilidade','pcd']},
+ {t:'Lei de Drogas', n:'11343', a:'2006', tp:'lei', em:'Institui o Sistema Nacional de Políticas Públicas sobre Drogas.', tags:['drogas','entorpecentes','trafico','porte']},
+ {t:'Estatuto do Desarmamento', n:'10826', a:'2003', tp:'lei', em:'Dispõe sobre registro, posse e comercialização de armas de fogo e munição.', tags:['arma','porte','registro','desarmamento']},
+ {t:'Lei de Responsabilidade Fiscal', n:'101', a:'2000', tp:'lcp', em:'Estabelece normas de finanças públicas voltadas para a responsabilidade na gestão fiscal.', tags:['fiscal','orcamento','divida publica','gasto publico','lrf']},
+ {t:'Regime Jurídico dos Servidores Públicos Federais', n:'8112', a:'1990', tp:'lei', em:'Dispõe sobre o regime jurídico dos servidores públicos civis da União, das autarquias e das fundações públicas federais.', tags:['servidor publico','concurso','cargo','estabilidade','uniao']},
+ {t:'Lei dos Juizados Especiais', n:'9099', a:'1995', tp:'lei', em:'Dispõe sobre os Juizados Especiais Cíveis e Criminais.', tags:['juizado','pequena causa','conciliacao']},
+ {t:'Lei de Execução Penal', n:'7210', a:'1984', tp:'lei', em:'Institui a Lei de Execução Penal.', tags:['execucao penal','presidio','pena','regime','progressao','lep']},
+ {t:'Lei da Ação Civil Pública', n:'7347', a:'1985', tp:'lei', em:'Disciplina a ação civil pública de responsabilidade por danos causados ao meio ambiente, ao consumidor e a outros interesses difusos e coletivos.', tags:['acao civil publica','meio ambiente','dano coletivo','ministerio publico']},
+ {t:'Lei de Improbidade Administrativa', n:'8429', a:'1992', tp:'lei', em:'Dispõe sobre as sanções aplicáveis aos agentes públicos nos casos de enriquecimento ilícito e atos de improbidade administrativa.', tags:['improbidade','corrupcao','administracao publica','agente publico']},
+ {t:'Lei de Direitos Autorais', n:'9610', a:'1998', tp:'lei', em:'Altera, atualiza e consolida a legislação sobre direitos autorais.', tags:['autor','obra','musica','livro','plagio','direito autoral']},
+ {t:'Lei da Propriedade Industrial', n:'9279', a:'1996', tp:'lei', em:'Regula direitos e obrigações relativos à propriedade industrial.', tags:['patente','marca','inpi','invencao','propriedade industrial']},
+ {t:'Lei de Crimes Ambientais', n:'9605', a:'1998', tp:'lei', em:'Dispõe sobre as sanções penais e administrativas derivadas de condutas e atividades lesivas ao meio ambiente.', tags:['meio ambiente','crime ambiental','fauna','flora','poluicao']},
+ {t:'Lei do Mandado de Segurança', n:'12016', a:'2009', tp:'lei', em:'Disciplina o mandado de segurança individual e coletivo.', tags:['mandado de seguranca','direito liquido e certo','remedio constitucional']},
+ {t:'Lei do Habeas Data', n:'9507', a:'1997', tp:'lei', em:'Regula o direito de acesso a informações e disciplina o processo de habeas data.', tags:['habeas data','informacao pessoal','remedio constitucional']},
+ {t:'Lei da Ação Popular', n:'4717', a:'1965', tp:'lei', em:'Regula a ação popular prevista na Constituição Federal.', tags:['acao popular','cidadao','nulidade','atos lesivos']},
+ {t:'Lei de Defesa da Concorrência', n:'12529', a:'2011', tp:'lei', em:'Estrutura o Sistema Brasileiro de Defesa da Concorrência.', tags:['concorrencia','cade','antitruste','cartel']},
+ {t:'Lei Anticorrupção', n:'12846', a:'2013', tp:'lei', em:'Dispõe sobre a responsabilização administrativa e civil de pessoas jurídicas pela prática de atos contra a administração pública, nacional ou estrangeira.', tags:['corrupcao','empresa','leniencia','compliance']},
+ {t:'Lei das Organizações Criminosas', n:'12850', a:'2013', tp:'lei', em:'Define organização criminosa e dispõe sobre a investigação criminal, os meios de obtenção da prova, as infrações penais correlatas e a colaboração premiada.', tags:['organizacao criminosa','delacao premiada','investigacao','orcrim']},
+ {t:'Lei Anticrime', n:'13964', a:'2019', tp:'lei', em:'Aperfeiçoa a legislação penal e processual penal.', tags:['penal','juiz das garantias','prisao','anticrime']},
+ {t:'Reforma Trabalhista', n:'13467', a:'2017', tp:'lei', em:'Altera a Consolidação das Leis do Trabalho e as Leis nº 6.019, 8.036 e 8.212 (reforma trabalhista).', tags:['trabalho','reforma','negociacao coletiva','terceirizacao']},
+ {t:'Lei de Benefícios da Previdência Social', n:'8213', a:'1991', tp:'lei', em:'Dispõe sobre os Planos de Benefícios da Previdência Social.', tags:['previdencia','aposentadoria','pensao','auxilio-doenca','inss']},
+ {t:'Lei do Inquilinato', n:'8245', a:'1991', tp:'lei', em:'Dispõe sobre as locações dos imóveis urbanos e os procedimentos a elas pertinentes.', tags:['locacao','aluguel','despejo','imovel','inquilino']},
+ {t:'Lei de Crimes de Racismo', n:'7716', a:'1989', tp:'lei', em:'Define os crimes resultantes de preconceito de raça ou de cor.', tags:['racismo','discriminacao','preconceito','injuria']},
+ {t:'Nova Lei de Licitações e Contratos', n:'14133', a:'2021', tp:'lei', em:'Lei de Licitações e Contratos Administrativos.', tags:['licitacao','contrato administrativo','pregao','dispensa']},
+ {t:'Lei de Licitações (1993)', n:'8666', a:'1993', tp:'lei', em:'Institui normas para licitações e contratos da Administração Pública.', tags:['licitacao','contrato','administracao publica']},
+ {t:'Reforma da Previdência', n:'103', a:'2019', tp:'emc', em:'Emenda Constitucional que altera o sistema de previdência social e estabelece regras de transição e disposições transitórias.', tags:['previdencia','aposentadoria','emenda','ec103']},
+ {t:'Reforma do Judiciário', n:'45', a:'2004', tp:'emc', em:'Emenda Constitucional que altera dispositivos relativos ao Poder Judiciário.', tags:['judiciario','cnj','sumula vinculante','emenda']},
+ {t:'Lei da Liberdade Econômica', n:'13874', a:'2019', tp:'lei', em:'Institui a Declaração de Direitos de Liberdade Econômica e estabelece garantias de livre mercado.', tags:['empresa','empreendedor','desburocratizacao','livre mercado']},
+ {t:'Código Florestal', n:'12651', a:'2011', tp:'lei', em:'Institui o novo Código Florestal brasileiro.', tags:['floresta','reserva legal','app','meio ambiente','rural','desmatamento']},
+ {t:'Lei de Acesso à Informação', n:'12527', a:'2011', tp:'lei', em:'Regula o acesso a informações previsto na Constituição Federal.', tags:['lai','transparencia','informacao publica','sigilo']},
+ {t:'Lei Orgânica da Saúde (SUS)', n:'8080', a:'1990', tp:'lei', em:'Dispõe sobre as condições para a promoção, proteção e recuperação da saúde, a organização e o funcionamento dos serviços de saúde (SUS).', tags:['saude','sus','hospital','atencao basica']},
+ {t:'Lei de Arbitragem', n:'9307', a:'1996', tp:'lei', em:'Dispõe sobre a arbitragem.', tags:['arbitragem','mediacao','conflito empresarial','camera']},
+ {t:'Lei de Recuperação e Falência', n:'11101', a:'2005', tp:'lei', em:'Regula a recuperação judicial, a recuperação extrajudicial e a falência do empresário e da sociedade empresária.', tags:['falencia','recuperacao judicial','empresa','credor']}
+];
+
+/* ================= UTILITÁRIOS ================= */
+const $ = id => document.getElementById(id);
+function norm(s){ return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+function esc(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtNum(n){ n=String(n); return n.length>3 ? n.slice(0,-3)+'.'+n.slice(-3) : n; }
+function fmtData(d){ if(!d) return ''; const m=String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : String(d); }
+function fmtTam(b){ if(b==null) return ''; if(b<1024) return b+' B'; if(b<1048576) return Math.round(b/1024)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+function encPath(p){ return p.split('/').map(encodeURIComponent).join('/'); }
+
+/* cache localStorage com validade */
+function lerCache(chave, ttl){
+  try{
+    const bruto = localStorage.getItem(chave);
+    if(!bruto) return null;
+    const env = JSON.parse(bruto);
+    if(Date.now() - env.t > ttl) { localStorage.removeItem(chave); return null; }
+    return env.v;
+  }catch(e){ return null; }
+}
+function salvarCache(chave, valor){
+  try{ localStorage.setItem(chave, JSON.stringify({t:Date.now(), v:valor})); }
+  catch(e){ /* quota cheia: descarta itens antigos */ try{ localStorage.removeItem(chave); }catch(_){} }
+}
+
+function tokenAtual(){ try{ return localStorage.getItem('lexbr:token') || ''; }catch(e){ return ''; } }
+function cabecalhos(){
+  const h = {'Accept':'application/vnd.github+json'};
+  const t = tokenAtual();
+  if(t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+function atualizarTaxa(headers){
+  const rest = headers.get('x-ratelimit-remaining'), tot = headers.get('x-ratelimit-limit');
+  if(rest===null) return;
+  const el = $('taxa-api'), txt = $('taxa-texto');
+  el.classList.toggle('alerta', rest<20 && rest>=5);
+  el.classList.toggle('critico', rest<5);
+  txt.textContent = rest<5 ? `API GitHub: ${rest}/${tot||60} restantes — configure um token` : `API GitHub: ${rest}/${tot||60} requisições`;
+}
+
+function toast(msg, tipo='info', ms=4800){
+  const div = document.createElement('div');
+  div.className = 'toast ' + (tipo==='erro'?'erro':tipo==='ok'?'ok':'');
+  div.innerHTML = `<span>${tipo==='erro'?'⚠️':tipo==='ok'?'✅':'ℹ️'}</span><span>${msg}</span>`;
+  $('toasts').appendChild(div);
+  setTimeout(()=>{ div.style.opacity='0'; div.style.transition='opacity .4s'; setTimeout(()=>div.remove(),400); }, ms);
+}
+
+/* ================= ACESSO AO REPOSITÓRIO ================= */
+async function listarDir(caminho){
+  const chave = 'lexbr:dir:' + caminho;
+  const emCache = lerCache(chave, 12*3600*1000);
+  if(emCache) return emCache;
+  const r = await fetch(API + encPath(caminho), {headers: cabecalhos()});
+  atualizarTaxa(r.headers);
+  if(r.status === 404){ const err = new Error('vazio'); err.tipo='vazio'; throw err; }
+  if(r.status === 403 || r.status === 429){ const err = new Error('rate'); err.tipo='rate'; throw err; }
+  if(!r.ok){ const err = new Error('http '+r.status); err.tipo='http'; throw err; }
+  const dados = await r.json();
+  const itens = dados
+    .filter(i => i.type==='dir' || /\.(md|jsonl|html|txt)$/i.test(i.name))
+    .map(i => ({nome:i.name, caminho:i.path, tipo:i.type, tam:i.size}));
+  salvarCache(chave, itens);
+  return itens;
+}
+
+function decodarBase64(b64){
+  const bytes = Uint8Array.from(atob((b64||'').replace(/\s/g,'')), c=>c.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+async function baixarTexto(caminho){
+  const chave = 'lexbr:doc:' + caminho;
+  const emCache = lerCache(chave, 30*24*3600*1000);
+  if(emCache) return emCache;
+  let texto = null;
+  try{
+    const r = await fetch(RAW + encPath(caminho));
+    if(r.ok) texto = await r.text();
+  }catch(e){ /* tenta API como fallback */ }
+  if(texto == null){
+    const r = await fetch(API + encPath(caminho), {headers: cabecalhos()});
+    atualizarTaxa(r.headers);
+    if(!r.ok){ const err = new Error('falha ao baixar'); err.tipo = (r.status===403||r.status===429)?'rate':'http'; throw err; }
+    const d = await r.json();
+    texto = decodarBase64(d.content);
+  }
+  if(texto.length < 2000000) salvarCache(chave, texto);
+  return texto;
+}
+
+function parseFront(texto){
+  const meta = {};
+  let corpo = texto;
+  if(texto.slice(0,3) === '---'){
+    const fim = texto.indexOf('\n---', 3);
+    if(fim > -1){
+      const bloco = texto.slice(3, fim).replace(/^\r?\n/, '');
+      corpo = texto.slice(fim + 4).replace(/^\r?\n/, '');
+      bloco.split('\n').forEach(l => {
+        const i = l.indexOf(':');
+        if(i < 1) return;
+        const k = l.slice(0, i).trim();
+        let v = l.slice(i+1).trim();
+        if(/^".*"$/.test(v)) v = v.slice(1, -1);
+        meta[k] = v;
+      });
+    }
+  }
+  return {meta, corpo};
+}
+
+/* ================= NOMES ================= */
+function humanizar(nome){
+  const base = nome.replace(/\.(md|jsonl|html|txt)$/i,'');
+  let m = base.match(/^(lei|lcp|del|emc|emr|ldl|dec|dlp|lcon)-0*(\d+)-(\d{4})-(\d{2})-(\d{2})(?:-(.+))?$/);
+  if(m){
+    const tipo = ROTULO_TIPO[m[1]] || m[1].toUpperCase();
+    return {titulo:`${tipo} nº ${fmtNum(m[2])}`, sub:`${m[5]}/${m[4]}/${m[3]}`};
+  }
+  m = base.match(/^(lei|lcp|del|emc|emr|ldl)-0*(\d+)-(\d{4})(?:-(.+))?$/);
+  if(m){
+    const tipo = ROTULO_TIPO[m[1]] || m[1].toUpperCase();
+    return {titulo:`${tipo} nº ${fmtNum(m[2])}`, sub:m[3]};
+  }
+  const limpo = base.replace(/-/g,' ').replace(/\bid\d+\b/g,'').replace(/\s+/g,' ').trim();
+  const cap = limpo.charAt(0).toUpperCase() + limpo.slice(1);
+  return {titulo: cap, sub: nome};
+}
+function rotuloSegmento(seg){
+  if(ROTULO_PASTA[seg]) return ROTULO_PASTA[seg];
+  if(UFS[seg]) return `${seg} — ${UFS[seg]}`;
+  if(/^\d{4}$/.test(seg)) return seg;
+  return seg.replace(/-/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+}
+
+/* ================= RESOLVER LEI POR NÚMERO ================= */
+async function resolverLei({uf='', tipo='auto', numero, ano}){
+  const bases = uf ? ['estaduais/'+uf] : ['federal'];
+  const tipos = (tipo && tipo!=='auto') ? [tipo] : ['lei','lcp','del','emc','ldl'];
+  const extras = uf ? [['leis-promulgadas','lei'],['leis-constitucionais','lcon']] : [];
+  const tentativas = tipos.map(tp => [PASTA_TIPO[tp], tp]).concat(extras);
+  for(const base of bases){
+    for(const [pasta, prefixo] of tentativas){
+      const caminho = `${base}/${pasta}/${ano}`;
+      let itens;
+      try{ itens = await listarDir(caminho); }
+      catch(e){
+        if(e.tipo==='rate') throw e;
+        continue; /* pasta não existe */
+      }
+      const re = new RegExp(`^[a-z]+-0*${numero}(?=[-.]|$)`);
+      const alvo = itens.find(i => i.tipo!=='dir' && re.test(i.nome.replace(/\.(md|txt)$/i,''))) ||
+                   itens.find(i => i.tipo!=='dir' && i.nome.includes(`-${numero}-`));
+      if(alvo) return alvo;
+    }
+  }
+  return null;
+}
+
+/* ================= HISTÓRICO ================= */
+function historico(){ try{ return JSON.parse(localStorage.getItem('lexbr:hist')||'[]'); }catch(e){ return []; } }
+function registrarHistorico(caminho, titulo){
+  let h = historico().filter(x => x.caminho !== caminho);
+  h.unshift({caminho, titulo, quando: Date.now()});
+  h = h.slice(0, 24);
+  try{ localStorage.setItem('lexbr:hist', JSON.stringify(h)); }catch(e){}
+  renderRecentes();
+}
+function renderRecentes(){
+  const h = historico().slice(0,6);
+  const el = $('lista-recentes');
+  if(!h.length){ el.innerHTML = '<div class="recentes-vazio">Nada por aqui ainda.</div>'; renderRecentesHome(); return; }
+  el.innerHTML = h.map(x => `<button onclick="irPara('#/lei/${encURI(x.caminho)}')" title="${esc(x.titulo)}">📄 ${esc(x.titulo.length>30?x.titulo.slice(0,30)+'…':x.titulo)}</button>`).join('');
+  renderRecentesHome();
+}
+function encURI(p){ return p.split('/').map(encodeURIComponent).join('/'); }
+function renderRecentesHome(){
+  const h = historico().slice(0,4);
+  const sec = $('sec-recentes');
+  if(!h.length){ sec.style.display='none'; return; }
+  sec.style.display='block';
+  $('grade-recentes').innerHTML = h.map(x => `
+    <div class="card-lei" onclick="irPara('#/lei/${encURI(x.caminho)}')">
+      <div class="apelido">Visto recentemente</div>
+      <h3>${esc(x.titulo)}</h3>
+      <div class="rodape"><span class="chip cinza">📄 Abrir texto</span></div>
+    </div>`).join('');
+}
+
+/* ================= ROTEADOR ================= */
+function irPara(hash){ if(location.hash !== hash) location.hash = hash; else rotear(); fecharMenu(); }
+function rotear(){
+  const h = location.hash || '#/';
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('ativa'));
+  document.querySelectorAll('.nav button[data-rota]').forEach(b=>b.classList.remove('ativo'));
+  window.scrollTo({top:0});
+  if(h.startsWith('#/lei/')){
+    marcarNav(null);
+    renderLeitor(decodeURIComponent(h.slice(6)));
+  } else if(h.startsWith('#/navegar')){
+    marcarNav('navegar');
+    const p = decodeURIComponent(h.replace('#/navegar','').replace(/^\//,''));
+    renderNavegar(p);
+  } else if(h.startsWith('#/buscar')){
+    marcarNav('busca');
+    const params = new URLSearchParams(h.split('?')[1] || '');
+    renderBusca(params);
+  } else {
+    marcarNav('home');
+    $('v-home').classList.add('ativa');
+    $('titulo-topo').textContent = 'LexBrasil — Navegador da Legislação Brasileira';
+  }
+}
+function marcarNav(rota){
+  document.querySelectorAll('.nav button[data-rota]').forEach(b=>b.classList.toggle('ativo', b.dataset.rota===rota));
+}
+window.addEventListener('hashchange', rotear);
+
+/* ================= HOME ================= */
+const DESTAQUES_HOME = ['constituicao.md','10406','2848','5452','8078','13709','13105','11340'];
+function renderHome(){
+  const mapaPorN = {};
+  ACERVO.forEach(e => { if(e.n) mapaPorN[e.n] = e; });
+  $('grade-destaques').innerHTML = DESTAQUES_HOME.map(id => {
+    const e = id === 'constituicao.md' ? ACERVO[0] : mapaPorN[id];
+    return cardLei(e);
+  }).join('');
+  const esferas = [
+    {ico:'📜', t:'Constituição Federal', d:'O texto vigente de 1988, compilado com as 172 emendas constitucionais.', rota:'#/lei/constituicao.md'},
+    {ico:'🏛️', t:'Legislação Federal', d:'29.184 normas: leis ordinárias, complementares, delegadas, decretos-lei e emendas, de 1822 a hoje.', rota:'#/navegar/federal'},
+    {ico:'🗺️', t:'Estados e Distrito Federal', d:'294.664 normas de 25 estados e do DF: constituições estaduais, leis e decretos-lei.', rota:'#/navegar/estaduais'},
+    {ico:'🏢', t:'Órgãos Reguladores', d:'Atos infralegais federais: CONTRAN, ANVISA, Receita Federal, CMN e outros órgãos.', rota:'#/navegar/reguladores'},
+    {ico:'⚖️', t:'Jurisprudência', d:'Súmulas e enunciados vinculantes dos tribunais superiores.', rota:'#/navegar/jurisprudencia'},
+    {ico:'🏙️', t:'Municípios', d:'Leis orgânicas e legislação municipal coletada pelos diários oficiais.', rota:'#/navegar/municipais'}
+  ];
+  $('grade-esferas').innerHTML = esferas.map(e => `
+    <div class="card-esfera" onclick="irPara('${e.rota}')">
+      <div class="icone">${e.ico}</div>
+      <div><h3>${e.t}</h3><p>${e.d}</p></div>
+      <div class="seta">→</div>
+    </div>`).join('');
+}
+function cardLei(e){
+  const tipoChip = e.path ? 'Constituição' : ROTULO_TIPO[e.tp];
+  const numChip = e.path ? '' : `<span class="chip ouro">Nº ${fmtNum(e.n)}/${e.a}</span>`;
+  return `
+  <div class="card-lei" onclick='abrirDoIndice(${JSON.stringify(e.n?{n:e.n,a:e.a,tp:e.tp}:{path:e.path}).replace(/'/g,"&#39;")})'>
+    <div class="apelido">${esc(e.ap || tipoChip)}</div>
+    <h3>${esc(e.t)}</h3>
+    <div class="ementa">${esc(e.em)}</div>
+    <div class="rodape"><span class="chip">${tipoChip}</span>${numChip}</div>
+  </div>`;
+}
+function abrirDoIndice(ref){
+  if(ref.path){ irPara('#/lei/' + encURI(ref.path)); return; }
+  const e = ACERVO.find(x => x.n===ref.n && x.a===ref.a);
+  irPara(`#/buscar?q=${encodeURIComponent(ref.n+'/'+ref.a)}&uf=&tipo=${e?e.tp:'auto'}&ano=${ref.a}`);
+}
+
+/* ================= BUSCA ================= */
+function popularSelectUF(sel, valor){
+  let html = '<option value="">Federal (União)</option>';
+  Object.keys(UFS).sort().forEach(uf => {
+    html += `<option value="${uf}" ${uf===valor?'selected':''}>${uf} — ${UFS[uf]}</option>`;
+  });
+  Object.keys(UFS_SEM_COBERTURA).sort().forEach(uf => {
+    html += `<option value="${uf}" disabled>${uf} — ${UFS[uf]} (${UFS_SEM_COBERTURA[uf].split('—')[0].trim()})</option>`;
+  });
+  sel.innerHTML = html;
+}
+function analisarConsulta(q){
+  let s = norm(q).trim();
+  let tipo = 'auto';
+  s = s.replace(/\b(lei|leis)\b/g,' ').replace(/\bn[ºo°]\.?\s*/g,' ');
+  if(/\b(complementar|lc)\b/.test(s)){ tipo='lcp'; s=s.replace(/\b(complementar|lc)\b/g,' '); }
+  else if(/\b(decreto[\s-]?lei|decreto lei|dl)\b/.test(s)){ tipo='del'; s=s.replace(/\b(decreto[\s-]?lei|decreto lei|dl)\b/g,' '); }
+  else if(/\b(emenda|ec)\b/.test(s)){ tipo='emc'; s=s.replace(/\b(emenda|ec)\b/g,' '); }
+  else if(/\b(delegada)\b/.test(s)){ tipo='ldl'; s=s.replace(/\b(delegada)\b/g,' '); }
+  s = s.trim();
+  const m = s.match(/^(\d{1,3}(?:\.\d{3})*|\d+)\s*(?:\/|,|\s)\s*((?:18|19|20)\d{2})$/);
+  if(m) return {numero: m[1].replace(/\D/g,''), ano: m[2], tipo};
+  const m2 = s.match(/^(\d{1,3}(?:\.\d{3})*|\d+)$/);
+  if(m2) return {numero: m2[1].replace(/\D/g,''), ano: null, tipo};
+  return {palavra: q.trim(), tipo};
+}
+function buscarIndice(palavra){
+  const termos = norm(palavra).split(/\s+/).filter(Boolean);
+  if(!termos.length) return [];
+  const scored = ACERVO.map(e => {
+    const alvoT = norm(e.t), alvoA = norm(e.ap||''), alvoE = norm(e.em), alvoG = norm((e.tags||[]).join(' '));
+    let pontos = 0;
+    for(const tt of termos){
+      if(alvoT.includes(tt)) pontos += 10;
+      if(alvoA.includes(tt)) pontos += 8;
+      if(alvoG.includes(tt)) pontos += 6;
+      if(alvoE.includes(tt)) pontos += 3;
+    }
+    return {e, pontos: pontos===termos.length*0 ? 0 : (termos.every(tt => alvoT.includes(tt)||alvoA.includes(tt)||alvoG.includes(tt)||alvoE.includes(tt)) ? pontos : pontos>0 ? Math.floor(pontos/2) : 0)};
+  }).filter(x => x.pontos > 0);
+  scored.sort((a,b)=>b.pontos-a.pontos);
+  return scored.slice(0,24).map(x=>x.e);
+}
+function executarBuscaForm(ev){
+  ev.preventDefault();
+  const q = $('q-busca').value.trim(), uf = $('uf-busca').value, tipo = $('tipo-busca').value, ano = $('ano-busca').value.trim();
+  const params = new URLSearchParams();
+  if(q) params.set('q', q);
+  if(uf) params.set('uf', uf);
+  if(tipo!=='auto') params.set('tipo', tipo);
+  if(ano) params.set('ano', ano);
+  location.hash = '#/buscar' + (params.toString() ? '?'+params.toString() : '');
+  if((location.hash) === '#/buscar?' + params.toString()) renderBusca(params);
+  return false;
+}
+function buscarHero(ev){
+  ev.preventDefault();
+  const q = $('q-hero').value.trim();
+  location.hash = '#/buscar' + (q ? '?q='+encodeURIComponent(q) : '');
+  if(!q) renderBusca(new URLSearchParams());
+}
+async function renderBusca(params){
+  $('v-busca').classList.add('ativa');
+  $('titulo-topo').textContent = 'Pesquisar leis';
+  popularSelectUF($('uf-busca'), params.get('uf')||'');
+  const q = params.get('q')||'';
+  $('q-busca').value = q;
+  $('tipo-busca').value = params.get('tipo')||'auto';
+  $('ano-busca').value = params.get('ano')||'';
+  /* sugestões */
+  const sug = $('sugestoes');
+  if(!sug.dataset.ok){
+    ['Código Civil','10406/2002','CLT','LGPD','consumidor','Maria da Penha','tributo','14133/2021','previdência','meio ambiente'].forEach(s => {
+      const b = document.createElement('button');
+      b.type='button'; b.className='sugestao'; b.textContent=s;
+      b.onclick = ()=>{ $('q-busca').value = s; executarBuscaForm(new Event('submit')); };
+      sug.appendChild(b);
+    });
+    sug.dataset.ok='1';
+  }
+  const area = $('resultados-busca');
+  if(!q){
+    area.innerHTML = `
+      <div class="estado-vazio">
+        <div class="ico">🔎</div>
+        <h3>Pesquise no acervo de 323.849 normas</h3>
+        <p>Busque por <strong>número + ano</strong> (ex.: <em>10406/2002</em>), por <strong>tema</strong> no índice das principais leis federais (ex.: <em>consumidor</em>, <em>previdência</em>) ou navegue pela árvore completa do repositório. Selecione a UF para pesquisar leis estaduais.</p>
+        <p style="margin-top:16px"><button class="btn btn-linha" onclick="irPara('#/navegar')">📂 Navegar no acervo</button></p>
+      </div>`;
+    return;
+  }
+  area.innerHTML = '<div class="lista-resultados">' + Array(3).fill('<div class="skel skel-bloco"></div>').join('') + '</div>';
+
+  const filtroUF = params.get('uf')||'';
+  const filtroTipo = params.get('tipo')||'auto';
+  const filtroAno = params.get('ano')||'';
+  const an = analisarConsulta(q);
+  const tipoFinal = filtroTipo!=='auto' ? filtroTipo : (an.tipo||'auto');
+
+  /* ---- busca por número ---- */
+  if(an.numero){
+    const numero = an.numero;
+    /* 1) índice curado bate? */
+    const hit = ACERVO.find(e => e.n===numero && (!an.ano || e.a===an.ano) && !filtroUF);
+    if(hit && !filtroAno){
+      renderResultadosIndice([hit], `Lei nº ${fmtNum(numero)} localizada no índice`, q);
+      return;
+    }
+    const ano = filtroAno || an.ano;
+    if(!ano){
+      area.innerHTML = `
+        <div class="resultado-info">Busca por <strong>número ${fmtNum(numero)}</strong></div>
+        <div class="aviso-card">
+          📅 <strong>Informe o ano da norma</strong> para localizá-la no repositório (campo “Ano” acima ou pesquise como <em>${numero}/AAAA</em>). O acervo tem 200 anos de legislação — o ano é necessário para achar o arquivo exato sem varrer milhares de pastas.
+          <br><br>Talvez você procure: ${ACERVO.filter(e=>e.n===numero).map(e=>`<a href="#" onclick="$('q-busca').value='${e.n}/${e.a}';executarBuscaForm(new Event('submit'));return false;">${esc(e.t)} (${e.n}/${e.a})</a>`).join(', ') || '—'}
+          <br><br><a href="https://github.com/search?q=repo%3Actresb%2Fleis+${encodeURIComponent(numero)}&type=code" target="_blank" rel="noopener">Pesquisar “${numero}” no texto integral via GitHub ↗</a> (requer conta no GitHub)
+        </div>`;
+      return;
+    }
+    try{
+      const alvo = await resolverLei({uf:filtroUF, tipo:tipoFinal, numero, ano});
+      if(alvo){
+        irPara('#/lei/' + encURI(alvo.caminho));
+        return;
+      }
+      area.innerHTML = `
+        <div class="estado-vazio">
+          <div class="ico">🕵️</div>
+          <h3>Não encontramos a norma nº ${fmtNum(numero)} de ${ano}</h3>
+          <p>${filtroUF?`Verifique se a ${UFS[filtroUF]||filtroUF} publicou essa norma no ano informado e se o tipo está correto.`:'Verifique o número, o ano, o tipo de norma e a esfera (federal ou estadual).'} Há lacunas conhecidas de cobertura em alguns estados (veja “Sobre”).</p>
+          <p style="margin-top:16px"><a class="btn btn-linha" href="https://github.com/search?q=repo%3Actresb%2Fleis+${encodeURIComponent(numero)}&type=code" target="_blank" rel="noopener">Tentar busca de texto no GitHub ↗</a></p>
+        </div>`;
+    }catch(e){
+      erroBusca(area, e);
+    }
+    return;
+  }
+
+  /* ---- busca por palavra-chave ---- */
+  const hits = buscarIndice(an.palavra || q);
+  let extra = '';
+  if(filtroUF){
+    extra = `<div class="aviso-card">ℹ️ A busca por palavra-chave cobre o <strong>índice das principais leis federais</strong>. Para explorar a legislação de <strong>${UFS[filtroUF]||filtroUF}</strong>, <a href="#/navegar/estaduais/${filtroUF}">navegue nas pastas do estado</a> ou pesquise por número + ano.</div>`;
+  }
+  renderResultadosIndice(hits, `${hits.length} resultado${hits.length===1?'':'s'} no índice para “${esc(q)}”`, q, extra);
+}
+function renderResultadosIndice(hits, infoHtml, q, extra=''){
+  const area = $('resultados-busca');
+  const linkGH = `https://github.com/search?q=repo%3Actresb%2Fleis+${encodeURIComponent(q)}&type=code`;
+  let html = `<div class="resultado-info">${infoHtml}</div><div class="lista-resultados">`;
+  if(!hits.length){
+    html += `
+      <div class="estado-vazio">
+        <div class="ico">📭</div>
+        <h3>Nenhuma lei encontrada no índice para “${esc(q)}”</h3>
+        <p>O índice curado cobre as principais leis federais. Para texto integral de todas as 323 mil normas (incluindo ementas e artigos), use a busca de código do GitHub, ou navegue pelas pastas do acervo.</p>
+        <p style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a class="btn btn-verde" href="${linkGH}" target="_blank" rel="noopener">Buscar texto integral no GitHub ↗</a>
+          <button class="btn btn-linha" onclick="irPara('#/navegar')">📂 Navegar no acervo</button>
+        </p>
+      </div>`;
+  } else {
+    hits.forEach(e => {
+      const id = JSON.stringify(e.path ? {path:e.path} : {n:e.n,a:e.a,tp:e.tp}).replace(/"/g,'&quot;');
+      html += `
+      <div class="item-resultado">
+        <div class="corpo">
+          <h3>${esc(e.t)}</h3>
+          <div class="em">${esc(e.em)}</div>
+          <div class="rodape" style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="chip">${e.path?'Constituição':ROTULO_TIPO[e.tp]}</span>
+            ${e.n?`<span class="chip ouro">Nº ${fmtNum(e.n)}/${e.a}</span>`:''}
+            <span class="chip azul">Federal</span>
+          </div>
+        </div>
+        <button class="btn btn-verde abrir" onclick='abrirDoIndice(${JSON.stringify(e.path?{path:e.path}:{n:e.n,a:e.a,tp:e.tp})})'>Abrir texto →</button>
+      </div>`;
+    });
+  }
+  html += '</div>';
+  html += extra;
+  if(hits.length){
+    html += `<div class="aviso-card">🔎 Quer procurar “<strong>${esc(q)}</strong>” dentro do texto de <em>todas</em> as 323.849 normas (ementas, artigos, anexos)? <a href="${linkGH}" target="_blank" rel="noopener">Use a busca de código do GitHub ↗</a> <span style="opacity:.75">(requer conta no GitHub; o repositório indexa o texto completo).</span></div>`;
+  }
+  area.innerHTML = html;
+}
+function erroBusca(area, e){
+  if(e.tipo==='rate'){
+    area.innerHTML = `<div class="aviso-card">⚠️ <strong>Limite de requisições da API do GitHub atingido</strong> (60/hora sem autenticação). Aguarde alguns minutos ou <button class="btn-side" style="display:inline;padding:4px 10px;color:#6b5410;border-color:rgba(201,162,39,.5)" onclick="abrirModal('modal-token')">configure um token gratuito</button> para elevar o limite a 5.000/hora.</div>`;
+  } else {
+    area.innerHTML = `<div class="aviso-card">⚠️ Erro ao consultar o repositório (${esc(e.message||'desconhecido')}). Tente novamente.</div>`;
+  }
+}
+
+/* ================= NAVEGAR ================= */
+function ordenarItens(itens){
+  const dirs = itens.filter(i=>i.tipo==='dir'), arqs = itens.filter(i=>i.tipo!=='dir' && !i.nome.startsWith('_') && !i.nome.startsWith('.'));
+  const soAnos = dirs.length && dirs.every(d=>/^\d{4}$/.test(d.nome));
+  if(soAnos) dirs.sort((a,b)=>Number(b.nome)-Number(a.nome));
+  else dirs.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  arqs.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  return dirs.concat(arqs);
+}
+async function renderNavegar(caminho){
+  $('v-navegar').classList.add('ativa');
+  $('titulo-topo').textContent = 'Navegar no acervo';
+  const cont = $('conteudo-navegar');
+  /* migalhas */
+  const segs = caminho ? caminho.split('/').filter(Boolean) : [];
+  let mig = `<button onclick="irPara('#/navegar')">🏠 Acervo</button>`;
+  let acum = '';
+  segs.forEach((s,i) => {
+    acum += (acum?'/':'') + s;
+    const alvo = '#/navegar/' + encURI(acum);
+    mig += `<span class="sep">/</span>`;
+    mig += (i===segs.length-1) ? `<span class="atual">${esc(rotuloSegmento(s))}</span>` : `<button onclick="irPara('${alvo}')">${esc(rotuloSegmento(s))}</button>`;
+  });
+  $('migalhas').innerHTML = mig;
+
+  if(!caminho){
+    cont.innerHTML = `
+      <div class="sec-head" style="margin-top:6px"><h2>Estrutura do acervo</h2></div>
+      <p class="sec-desc">O repositório organiza as normas por esfera, tipo de instrumento e ano. Clique para explorar.</p>
+      <div class="grade-esferas" id="esferas-nav"></div>`;
+    const esferas = [
+      {ico:'📜', t:'constituicao.md', d:'Constituição da República Federativa do Brasil de 1988 — texto vigente compilado (documento único na raiz).', acao:`irPara('#/lei/constituicao.md')`},
+      {ico:'🏛️', t:'federal/', d:'Leis ordinárias, complementares e delegadas, decretos-lei, emendas constitucionais, constituições históricas e regulamentos consolidados da União.', acao:`irPara('#/navegar/federal')`},
+      {ico:'🗺️', t:'estaduais/', d:'Constituições estaduais, emendas e leis de 25 estados e do Distrito Federal.', acao:`irPara('#/navegar/estaduais')`},
+      {ico:'🏢', t:'reguladores/', d:'Atos infralegais federais por órgão: CONTRAN, ANVISA, Receita Federal, CMN, Banco Central e outros.', acao:`irPara('#/navegar/reguladores')`},
+      {ico:'⚖️', t:'jurisprudencia/', d:'Súmulas e enunciados vinculantes dos tribunais superiores.', acao:`irPara('#/navegar/jurisprudencia')`},
+      {ico:'🏙️', t:'municipais/', d:'Legislação municipal coletada dos diários oficiais das associações estaduais.', acao:`irPara('#/navegar/municipais')`},
+      {ico:'🧾', t:'fonte/', d:'Registro de procedência: falhas por fonte e arquivos especiais.', acao:`irPara('#/navegar/fonte')`}
+    ];
+    $('esferas-nav').innerHTML = esferas.map(e => `
+      <div class="card-esfera" onclick="${e.acao}">
+        <div class="icone">${e.ico}</div>
+        <div><h3 style="font-family:ui-monospace,Menlo,monospace;font-size:14px">${esc(e.t)}</h3><p>${e.d}</p></div>
+        <div class="seta">→</div>
+      </div>`).join('');
+    return;
+  }
+
+  cont.innerHTML = '<div class="lista-arquivos">' + Array(9).fill('<div class="skel skel-bloco" style="height:56px;margin:0;border-radius:0;border-bottom:1px solid #f0ede3"></div>').join('') + '</div>';
+  try{
+    const itens = ordenarItens(await listarDir(caminho));
+    if(!itens.length){
+      cont.innerHTML = `<div class="estado-vazio"><div class="ico">📂</div><h3>Pasta vazia</h3><p>Nenhum arquivo disponível nesta pasta.</p></div>`;
+      return;
+    }
+    const nDir = itens.filter(i=>i.tipo==='dir').length;
+    cont.innerHTML = `
+      <div class="barra-lista">
+        <div class="filtro">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="filtro-arq" type="text" placeholder="Filtrar nesta pasta…" oninput="filtrarLista(this.value)">
+        </div>
+        <div class="contagem" id="contagem-lista">${nDir} pasta${nDir===1?'':'s'} · ${itens.length-nDir} arquivo${itens.length-nDir===1?'':'s'}</div>
+      </div>
+      <div class="lista-arquivos" id="lista-arquivos">
+        ${itens.map(i => linhaArq(i, caminho)).join('')}
+      </div>`;
+  }catch(e){
+    if(e.tipo==='rate') cont.innerHTML = `<div class="aviso-card">⚠️ Limite da API do GitHub atingido. <button class="btn-side" style="display:inline;padding:4px 10px" onclick="abrirModal('modal-token')">Configurar token</button> ou aguarde alguns minutos.</div>`;
+    else if(e.tipo==='vazio') cont.innerHTML = `<div class="estado-vazio"><div class="ico">🚫</div><h3>Pasta não encontrada</h3><p>O caminho <code>${esc(caminho)}</code> não existe no repositório.</p></div>`;
+    else cont.innerHTML = `<div class="aviso-card">⚠️ Erro ao listar pasta: ${esc(e.message)}</div>`;
+  }
+}
+function linhaArq(i, caminho){
+  if(i.tipo==='dir'){
+    const alvo = '#/navegar/' + encURI(caminho + '/' + i.nome);
+    return `<button class="linha-arq pasta" data-nome="${esc(norm(i.nome+' '+rotuloSegmento(i.nome)))}" onclick="irPara('${alvo}')">
+      <span class="ico">📁</span>
+      <span class="nome"><b>${esc(rotuloSegmento(i.nome))}</b><small>${esc(i.nome)}</small></span>
+      <span class="seta">›</span>
+    </button>`;
+  }
+  const h = humanizar(i.nome);
+  const abrir = /\.(md)$/i.test(i.nome) ? `irPara('#/lei/${encURI(caminho + '/' + i.nome)}')` : `window.open('${RAW}${encURI(caminho + '/' + i.nome)}','_blank')`;
+  return `<button class="linha-arq arquivo" data-nome="${esc(norm(i.nome+' '+h.titulo))}" onclick="${abrir}">
+    <span class="ico">📄</span>
+    <span class="nome"><b>${esc(h.titulo)}</b><small>${esc(i.nome)}</small></span>
+    <span class="tam">${fmtTam(i.tam)}</span>
+    <span class="seta">›</span>
+  </button>`;
+}
+function filtrarLista(q){
+  const nq = norm(q);
+  let visiveis = 0;
+  document.querySelectorAll('#lista-arquivos .linha-arq').forEach(l => {
+    const ok = !nq || (l.dataset.nome||'').includes(nq);
+    l.style.display = ok ? 'flex' : 'none';
+    if(ok) visiveis++;
+  });
+  $('contagem-lista').textContent = q ? `${visiveis} item(ns) para “${q}”` : $('contagem-lista').dataset.orig || $('contagem-lista').textContent;
+  if(q==='') $('contagem-lista').textContent = $('contagem-lista').dataset.orig || $('contagem-lista').textContent;
+  else $('contagem-lista').dataset.orig = $('contagem-lista').dataset.orig || '';
+}
+
+/* ================= LEITOR ================= */
+let achados = [], achadoIdx = -1, docAtual = null;
+
+async function renderLeitor(caminho){
+  $('v-leitor').classList.add('ativa');
+  $('titulo-topo').textContent = 'Leitura da norma';
+  achados = []; achadoIdx = -1; docAtual = caminho;
+  const cont = $('conteudo-leitor');
+  const nomeBase = caminho.split('/').pop();
+  cont.innerHTML = `
+    <div class="leitor-topo"><button class="btn-voltar" onclick="voltar()">← Voltar</button></div>
+    <div class="skel skel-bloco" style="height:180px"></div>
+    <div class="skel skel-linha" style="width:92%"></div><div class="skel skel-linha" style="width:88%"></div>
+    <div class="skel skel-linha" style="width:95%"></div><div class="skel skel-linha" style="width:70%"></div>
+    <div class="skel skel-linha" style="width:90%"></div><div class="skel skel-linha" style="width:84%"></div>`;
+  $('progresso').style.width = '0%';
+  try{
+    const texto = await baixarTexto(caminho);
+    const {meta, corpo} = parseFront(texto);
+    const h = humanizar(nomeBase);
+    const titulo = meta.titulo || (caminho==='constituicao.md' ? 'Constituição da República Federativa do Brasil de 1988' : h.titulo);
+    const ementa = meta.ementa || (corpo.split('\n').find(l=>l.trim() && !l.startsWith('#'))||'').slice(0,300);
+    const revogada = String(meta.revogada).toLowerCase()==='true';
+    const situacao = revogada ? 'Revogada' : (meta.situacao || 'Em vigor');
+    registrarHistorico(caminho, titulo);
+
+    const cel = (rot, val, mono) => val ? `<div class="cel"><div class="rot">${rot}</div><div class="val ${mono?'mono':''}">${esc(val)}</div></div>` : '';
+    cont.innerHTML = `
+      <div class="leitor-topo">
+        <button class="btn-voltar" onclick="voltar()">← Voltar</button>
+        <div class="acoes-doc">
+          ${meta.fonte ? `<a class="btn-doc" href="${esc(meta.fonte)}" target="_blank" rel="noopener">🏛️ Fonte oficial ↗</a>` : ''}
+          <a class="btn-doc" href="${BLOB}${encURI(caminho)}" target="_blank" rel="noopener">🐙 Ver no GitHub ↗</a>
+          <a class="btn-doc" href="${RAW}${encURI(caminho)}" download="${esc(nomeBase)}">⬇️ Baixar .md</a>
+          <button class="btn-doc" onclick="copiarLink()">🔗 Copiar link</button>
+          <button class="btn-doc" onclick="window.print()">🖨️ Imprimir</button>
+        </div>
+      </div>
+      <div class="meta-doc">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <span class="chip">${esc(meta.tipo || (caminho==='constituicao.md'?'Constituição':ROTULO_TIPO[(nomeBase.match(/^[a-z]+/)||[''])[0]]||'Norma'))}</span>
+          <span class="chip azul">${meta.uf ? esc(meta.uf+' — '+(UFS[meta.uf]||'')) : (caminho.startsWith('estaduais')?'Estadual':'Federal')}</span>
+          <span class="chip ${revogada?'vermelho':''}">${revogada?'⛔ ':''}${esc(situacao)}</span>
+          ${meta.versao_texto?`<span class="chip ouro">📝 ${esc(meta.versao_texto)}</span>`:''}
+        </div>
+        <h1>${esc(titulo)}</h1>
+        ${ementa?`<div class="ementa-doc">${esc(ementa)}</div>`:''}
+        <div class="grade-meta">
+          ${cel('Número', meta.numero ? fmtNum(meta.numero) : '')}
+          ${cel('Data da norma', fmtData(meta.data || meta.ano))}
+          ${cel('Publicação', meta.publicacao || fmtData(meta.data_publicacao))}
+          ${cel('Baixado da fonte em', fmtData(meta.baixado_em))}
+          ${cel('URN Lex', meta.urn, true)}
+          ${cel('Arquivo', caminho, true)}
+        </div>
+      </div>
+      <div class="barras-doc">
+        <div class="grupo">
+          <button class="btn-mini" onclick="mudarFonte(-1)" title="Diminuir fonte">A−</button>
+          <button class="btn-mini" onclick="mudarFonte(1)" title="Aumentar fonte">A+</button>
+        </div>
+        <span style="font-size:12px;color:var(--muted)">tamanho do texto</span>
+        <div id="busca-doc-wrap">
+          <input id="q-doc" type="text" placeholder="Buscar dentro desta lei… (Enter)" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarNoDoc(this.value);}">
+          <span id="contador-achados"></span>
+          <button class="btn-mini" onclick="navegarAchado(-1)" title="Anterior">↑</button>
+          <button class="btn-mini" onclick="navegarAchado(1)" title="Próximo">↓</button>
+          <button class="btn-mini" onclick="limparBuscaDoc()" title="Limpar">✕</button>
+        </div>
+      </div>
+      <article class="doc" id="doc-corpo"></article>`;
+    /* render markdown */
+    marked.setOptions({gfm:true, breaks:false});
+    const htmlSujo = marked.parse(corpo);
+    $('doc-corpo').innerHTML = DOMPurify.sanitize(htmlSujo);
+    const tamanho = texto.length;
+    if(tamanho > 1500000){
+      toast('Documento extenso: a renderização pode levar alguns segundos em dispositivos lentos.','info');
+    }
+  }catch(e){
+    if(e.tipo==='rate') cont.innerHTML = `<div class="leitor-topo"><button class="btn-voltar" onclick="voltar()">← Voltar</button></div><div class="aviso-card">⚠️ Limite da API do GitHub atingido ao baixar o texto. <button class="btn-side" style="display:inline;padding:4px 10px" onclick="abrirModal('modal-token')">Configure um token</button> ou tente novamente em instantes.</div>`;
+    else cont.innerHTML = `<div class="leitor-topo"><button class="btn-voltar" onclick="voltar()">← Voltar</button></div><div class="estado-vazio"><div class="ico">⚠️</div><h3>Não foi possível carregar o texto</h3><p>${esc(e.message||'Erro desconhecido')} — <a href="${RAW}${encURI(caminho)}" target="_blank" rel="noopener">abrir arquivo bruto ↗</a></p></div>`;
+  }
+}
+function voltar(){
+  if(history.length>1) history.back(); else irPara('#/');
+}
+function copiarLink(){
+  navigator.clipboard.writeText(location.href).then(()=>toast('Link copiado para a área de transferência.','ok')).catch(()=>toast('Não foi possível copiar o link.','erro'));
+}
+function mudarFonte(delta){
+  const atual = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--doc-size'));
+  document.documentElement.style.setProperty('--doc-size', Math.min(24, Math.max(13, atual + delta*1.5)) + 'px');
+}
+/* busca dentro do documento */
+function limparDestaques(container){
+  container.querySelectorAll('mark.hl').forEach(m => { m.replaceWith(document.createTextNode(m.textContent)); });
+  container.normalize();
+}
+function buscarNoDoc(termo){
+  const doc = $('doc-corpo');
+  if(!doc) return;
+  limparDestaques(doc);
+  achados = []; achadoIdx = -1;
+  const cont = $('contador-achados');
+  termo = (termo||'').trim();
+  if(!termo){ cont.textContent=''; return; }
+  const walker = document.createTreeWalker(doc, NodeFilter.SHOW_TEXT, null);
+  const nos = [];
+  while(walker.nextNode()) nos.push(walker.currentNode);
+  const t = termo.toLowerCase();
+  nos.forEach(no => {
+    const txt = no.nodeValue, low = txt.toLowerCase();
+    let idx = low.indexOf(t);
+    if(idx < 0) return;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    while(idx > -1){
+      frag.appendChild(document.createTextNode(txt.slice(last, idx)));
+      const mark = document.createElement('mark');
+      mark.className = 'hl';
+      mark.textContent = txt.slice(idx, idx + t.length);
+      frag.appendChild(mark);
+      last = idx + t.length;
+      idx = low.indexOf(t, last);
+    }
+    frag.appendChild(document.createTextNode(txt.slice(last)));
+    no.parentNode.replaceChild(frag, no);
+  });
+  achados = Array.from(doc.querySelectorAll('mark.hl'));
+  if(achados.length){ achadoIdx = 0; marcarAtual(); cont.textContent = `1 de ${achados.length}`; }
+  else cont.textContent = '0 resultados';
+}
+function marcarAtual(){
+  achados.forEach((m,i)=>m.classList.toggle('atual', i===achadoIdx));
+  if(achados[achadoIdx]) achados[achadoIdx].scrollIntoView({behavior:'smooth', block:'center'});
+  const cont = $('contador-achados');
+  if(cont) cont.textContent = `${achadoIdx+1} de ${achados.length}`;
+}
+function navegarAchado(dir){
+  if(!achados.length) return;
+  achadoIdx = (achadoIdx + dir + achados.length) % achados.length;
+  marcarAtual();
+}
+function limparBuscaDoc(){
+  const q = $('q-doc'); if(q) q.value='';
+  buscarNoDoc('');
+}
+/* progresso de leitura */
+window.addEventListener('scroll', () => {
+  const doc = $('doc-corpo');
+  if(!doc || !$('v-leitor').classList.contains('ativa')) return;
+  const r = doc.getBoundingClientRect();
+  const total = r.height - window.innerHeight;
+  const visto = Math.min(Math.max(-r.top, 0), Math.max(total,1));
+  $('progresso').style.width = (total>0 ? (visto/total)*100 : 100) + '%';
+}, {passive:true});
+
+/* ================= MODAIS / MENU / TOKEN ================= */
+function abrirModal(id){ $(id).classList.add('aberto'); if(id==='modal-token') $('input-token').value = tokenAtual(); }
+function fecharModais(){ document.querySelectorAll('.modal-fundo').forEach(m=>m.classList.remove('aberto')); }
+function salvarToken(){
+  const v = $('input-token').value.trim();
+  try{ if(v) localStorage.setItem('lexbr:token', v); else localStorage.removeItem('lexbr:token'); }catch(e){}
+  fecharModais();
+  toast(v ? 'Token salvo — limite ampliado para 5.000 req/hora.' : 'Token removido.', 'ok');
+}
+function abrirMenu(){ $('sidebar').classList.add('aberto'); $('obscuro').classList.add('aberto'); }
+function fecharMenu(){ $('sidebar').classList.remove('aberto'); $('obscuro').classList.remove('aberto'); }
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape'){ fecharModais(); fecharMenu(); }
+  if(e.key === '/' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){
+    e.preventDefault();
+    const alvo = $('v-home').classList.contains('ativa') ? $('q-hero') : ($('q-busca') || $('q-hero'));
+    if(!$('v-busca').classList.contains('ativa') && !$('v-home').classList.contains('ativa')) irPara('#/buscar');
+    setTimeout(()=>alvo && alvo.focus(), 60);
+  }
+  if($('v-leitor').classList.contains('ativa') && achados.length){
+    if(e.key==='F3' || (e.key==='Enter' && document.activeElement===$('q-doc'))){ e.preventDefault(); navegarAchado(e.shiftKey?-1:1); }
+  }
+});
+
+/* ================= INICIALIZAÇÃO ================= */
+(async function init(){
+  renderHome();
+  renderRecentes();
+  rotear();
+  /* aquece contagem da API com uma chamada leve */
+  try{
+    const r = await fetch(API, {headers: cabecalhos()});
+    atualizarTaxa(r.headers);
+    if(!tokenAtual() && r.headers.get('x-ratelimit-remaining') !== null && Number(r.headers.get('x-ratelimit-remaining')) < 10){
+      toast('Poucas requisições restantes na API do GitHub. Considere configurar um token gratuito (menu lateral).','info',7000);
+    }
+  }catch(e){ $('taxa-texto').textContent = 'API GitHub — offline?'; }
+})();
+</script>
+</body>
+</html>
